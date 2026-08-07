@@ -1,0 +1,116 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import classification_report, precision_score, recall_score, f1_score, roc_auc_score, roc_curve
+
+df = pd.read_csv("loan_data_set.csv")
+
+print("FIRST FIVE RECORDS")
+print(df.head())
+
+print("\nDATASET INFO")
+print(df.info())
+
+print("\nDATASET SHAPE")
+print(df.shape)
+
+print("\nMISSING VALUES")
+print(df.isnull().sum())
+
+df["Gender"] = df["Gender"].fillna(df["Gender"].mode()[0])
+df["Married"] = df["Married"].fillna(df["Married"].mode()[0])
+df["Dependents"] = df["Dependents"].fillna(df["Dependents"].mode()[0])
+df["Self_Employed"] = df["Self_Employed"].fillna(df["Self_Employed"].mode()[0])
+df["LoanAmount"] = df["LoanAmount"].fillna(df["LoanAmount"].median())
+df["Loan_Amount_Term"] = df["Loan_Amount_Term"].fillna(df["Loan_Amount_Term"].mode()[0])
+df["Credit_History"] = df["Credit_History"].fillna(df["Credit_History"].mode()[0])
+
+print("\nMISSING VALUES AFTER CLEANING")
+print(df.isnull().sum())
+
+df.drop("Loan_ID", axis=1, inplace=True)
+
+encoder = LabelEncoder()
+
+df["Gender"] = encoder.fit_transform(df["Gender"])
+df["Married"] = encoder.fit_transform(df["Married"])
+df["Dependents"] = encoder.fit_transform(df["Dependents"])
+df["Education"] = encoder.fit_transform(df["Education"])
+df["Self_Employed"] = encoder.fit_transform(df["Self_Employed"])
+df["Property_Area"] = encoder.fit_transform(df["Property_Area"])
+df["Loan_Status"] = encoder.fit_transform(df["Loan_Status"])
+
+print("\nENCODED DATA")
+print(df.head())
+
+X = df.drop("Loan_Status", axis=1)
+y = df["Loan_Status"]
+
+print("\nFeature Shape :", X.shape)
+print("Target Shape :", y.shape)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.30, random_state=42
+)
+
+print("\nTraining Records :", X_train.shape)
+print("Testing Records :", X_test.shape)
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+print("\nFeature Scaling Completed")
+
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+y_prob = model.predict_proba(X_test)[:, 1]
+
+accuracy = accuracy_score(y_test, y_pred)
+
+print("\nAccuracy :", round(accuracy, 4))
+
+cm = confusion_matrix(y_test, y_pred)
+
+print("\nConfusion Matrix")
+print(cm)
+
+ConfusionMatrixDisplay(confusion_matrix=cm).plot()
+plt.show()
+
+print("\nClassification Report")
+print(classification_report(y_test, y_pred))
+
+precision = precision_score(y_test, y_pred)
+recall = recall_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+roc = roc_auc_score(y_test, y_prob)
+
+print("\nModel Evaluation")
+print("Accuracy  :", round(accuracy, 4))
+print("Precision :", round(precision, 4))
+print("Recall    :", round(recall, 4))
+print("F1 Score  :", round(f1, 4))
+print("ROC-AUC   :", round(roc, 4))
+
+fpr, tpr, threshold = roc_curve(y_test, y_prob)
+
+plt.figure(figsize=(6, 6))
+plt.plot(fpr, tpr, label="ROC Curve")
+plt.plot([0, 1], [0, 1], "r--")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+df["Predicted_Loan_Status"] = model.predict(scaler.transform(X))
+df.to_csv("Loan_Prediction_Output.csv", index=False)
+
+print("\nPrediction file saved successfully.")
